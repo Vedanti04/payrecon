@@ -215,20 +215,64 @@ PayRecon accepts two CSV input files:
 
 ---
 
-## ☁️ Deployment Instructions (Streamlit Community Cloud)
+## ☁️ Production Deployment & CI/CD
 
-1. Push this repository to GitHub:
+### 1. GitHub Setup & Streamlit Community Cloud
+
+The local repository is already initialized on branch `main` with all files committed.
+
+#### Step 1: Create a GitHub Repository
+1. Go to [github.com/new](https://github.com/new) and create a repository (e.g. `payrecon` or `PayRecon`). Choose **Public** or **Private**.
+2. Run the following commands in your terminal:
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit: PayRecon intelligent reconciliation system"
    git remote add origin https://github.com/<your-username>/payrecon.git
+   git branch -M main
    git push -u origin main
    ```
-2. Navigate to [share.streamlit.io](https://share.streamlit.io).
-3. Connect your GitHub repository.
-4. Select `app.py` as the main file path.
-5. Deploy! Streamlit Cloud will read `requirements.txt` and serve the application automatically.
+
+#### Step 2: Deploy to Streamlit Community Cloud
+1. Sign in to [share.streamlit.io](https://share.streamlit.io/) with your GitHub account.
+2. Click **New app**.
+3. Select your repository: `<your-username>/payrecon`.
+4. Branch: `main`.
+5. Main file path: `app.py`.
+6. Click **Deploy!**
+Streamlit Cloud automatically reads `.streamlit/config.toml` and `requirements.txt`, builds the container, and serves your live dashboard.
+
+---
+
+### 2. Docker & Containerized Self-Hosted Deployment
+
+PayRecon includes production-grade containerization with non-root security and built-in healthchecks.
+
+#### Option A: Run with Docker Compose (Recommended)
+Build and launch the container in the background with persistent data volume:
+```bash
+docker compose up --build -d
+```
+- App URL: `http://localhost:8501`
+- Stop container: `docker compose down`
+- View logs: `docker compose logs -f`
+
+#### Option B: Run with Docker CLI
+```bash
+# Build image
+docker build -t payrecon:latest .
+
+# Run container
+docker run -d --name payrecon-app -p 8501:8501 payrecon:latest
+```
+
+---
+
+### 3. Automated CI/CD Pipeline (GitHub Actions)
+
+Every `git push` or pull request automatically triggers the `.github/workflows/ci.yml` pipeline:
+- Matrices across **Python 3.10, 3.11, and 3.12**.
+- Verifies module byte-compilation.
+- Executes the full **21-test Pytest suite**.
+- Validates synthetic data generation and the 4 assessment anomalies.
+- Guarantees financial math and report export integrity prior to deployment.
 
 ---
 
