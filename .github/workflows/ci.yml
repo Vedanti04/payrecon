@@ -1,0 +1,63 @@
+name: PayRecon CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test-and-verify:
+    name: Test & Financial Engine Verification
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Byte-compile Python Modules
+      run: |
+        python -m py_compile app.py src/*.py tests/*.py
+
+    - name: Run Pytest Suite (21 Tests)
+      run: |
+        python -m pytest tests/ -v
+
+    - name: Verify Synthetic Data Generator
+      run: |
+        python src/data_generator.py
+
+    - name: Verify Report Generators & Reconciliation Integrity
+      run: |
+        python -c "
+        import pandas as pd
+        from decimal import Decimal
+        from src.data_generator import generate_datasets
+        from src.reconciliation import ReconciliationEngine
+        from src.report_generator import generate_summary_csv
+
+        t_p, s_p = generate_datasets('data', seed=42)
+        engine = ReconciliationEngine()
+        items, summary = engine.reconcile(pd.read_csv(t_p), pd.read_csv(s_p))
+        assert summary.late_settlement_count >= 1
+        assert summary.rounding_discrepancy_count >= 5
+        assert summary.duplicate_settlement_count >= 1
+        assert summary.unmatched_refund_count >= 1
+        assert len(generate_summary_csv(summary)) > 100
+        print('CI Verification Successful!')
+        "
